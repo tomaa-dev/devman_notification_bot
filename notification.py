@@ -13,8 +13,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Программа отправляет уведомления о проверке работ на платформе Devman')
     parser.add_argument('tg_id', help='id')
-    args = parser.parse_args()
-    chat_id = args.tg_id
+    chat_id = parser.parse_args().tg_id
 
     headers = {
         "Authorization": f"Token {dvmn_token}"
@@ -28,20 +27,20 @@ def main():
         try:
             params = {}
             params["timestamp"] = current_timestamp
-            response = requests.get(url, headers=headers,  params=params, timeout=60)
+            response = requests.get(url, headers=headers,  params=params, timeout=2)
 
             response.raise_for_status()
-            data = response.json()
-            pprint(data)
+            server_response = response.json()
+            pprint(server_response)
 
-            status = data.get("status")
+            status = server_response.get("status")
 
             if status == "timeout":
-                current_timestamp = data.get("timestamp_to_request")
+                current_timestamp = server_response.get("timestamp_to_request")
             elif status == "found":
-                current_timestamp = data.get("last_attempt_timestamp")
+                current_timestamp = server_response.get("last_attempt_timestamp")
 
-                new_attempts = data.get("new_attempts", [])
+                new_attempts = server_response.get("new_attempts", [])
                 for attempt in new_attempts:
                     lesson_title = attempt.get("lesson_title")
                     is_negative = attempt.get("is_negative")
@@ -58,9 +57,10 @@ def main():
                     bot.send_message(chat_id=chat_id, text=message_text)
 
         except requests.exceptions.ReadTimeout:
-            print('Новый запрос')
+            continue
         except requests.exceptions.ConnectionError:
             print('Подключение к серверу')
+            time.sleep(10)
 
 
 if __name__ == '__main__':
